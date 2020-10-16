@@ -70,6 +70,12 @@ public class DevelopmentClientController {
   private ReactNativeHost mAppHost;
   private ReactRootView mRootView;
 
+  enum Mode {
+    LAUNCHER,
+    APP,
+  };
+  Mode mode = Mode.LAUNCHER;
+
   private DevelopmentClientController(Context context, ReactNativeHost appHost, String mainComponentName) {
     mMainComponentName = mainComponentName;
     mAppHost = appHost;
@@ -98,7 +104,14 @@ public class DevelopmentClientController {
   }
 
   public ReactNativeHost getReactNativeHost() {
-    return mDevClientHost;
+    switch (mode) {
+      case LAUNCHER:
+        return mDevClientHost;
+      case APP:
+        return mAppHost;
+      default:
+        return null;
+    }
   }
 
   public void setRootView(ReactRootView rootView) {
@@ -109,43 +122,34 @@ public class DevelopmentClientController {
     Uri uri = Uri.parse(url);
     final String host = uri.getHost() + ":" + uri.getPort();
 
-    // Read orientation config
-    final int orientation =
-        options.hasKey("orientation") && options.getString("orientation").equals("landscape") ?
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE :
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
-
     // Start the app on the main thread
-    new Handler(Looper.getMainLooper()).post(new Runnable() {
-      @Override
-      public void run() {
+    new Handler(Looper.getMainLooper()).post(() -> {
+      ReactInstanceManager appInstanceManager = mAppHost.getReactInstanceManager();
+
+      try {
+        DevelopmentClientInternalSettings settings = new DevelopmentClientInternalSettings(reactContext, host);
+
+        DevSupportManager devSupportManager = appInstanceManager.getDevSupportManager();
+        Class<?> devSupportManagerBaseClass = devSupportManager.getClass().getSuperclass();
+
+        Field mDevSettingsField = devSupportManagerBaseClass.getDeclaredField("mDevSettings");
+        mDevSettingsField.setAccessible(true);
+        mDevSettingsField.set(devSupportManager, settings);
+
+        Field mDevServerHelperField = devSupportManagerBaseClass.getDeclaredField("mDevServerHelper");
+        mDevServerHelperField.setAccessible(true);
+        Object devServerHelper = mDevServerHelperField.get(devSupportManager);
+        Field mSettingsField = devServerHelper.getClass().getDeclaredField("mSettings");
+        mSettingsField.setAccessible(true);
+        mSettingsField.set(devServerHelper, settings);
+
+        mode = Mode.APP;
         mRootView.unmountReactApplication();
-        mDevClientHost.getReactInstanceManager().destroy();
-
-        ReactInstanceManager appInstanceManager = mAppHost.getReactInstanceManager();
-
-        try {
-          DevelopmentClientInternalSettings settings = new DevelopmentClientInternalSettings(reactContext, host);
-
-          DevSupportManager devSupportManager = appInstanceManager.getDevSupportManager();
-          Class<?> devSupportManagerBaseClass = devSupportManager.getClass().getSuperclass();
-
-          Field mDevSettingsField = devSupportManagerBaseClass.getDeclaredField("mDevSettings");
-          mDevSettingsField.setAccessible(true);
-          mDevSettingsField.set(devSupportManager, settings);
-
-          Field mDevServerHelperField = devSupportManagerBaseClass.getDeclaredField("mDevServerHelper");
-          mDevServerHelperField.setAccessible(true);
-          Object devServerHelper = mDevServerHelperField.get(devSupportManager);
-          Field mSettingsField = devServerHelper.getClass().getDeclaredField("mSettings");
-          mSettingsField.setAccessible(true);
-          mSettingsField.set(devServerHelper, settings);
-
-          appInstanceManager.createReactContextInBackground();
-          appInstanceManager.attachRootView(mRootView);
-        } catch (Exception e) {
-          Log.e("ExpoDevelopmentClient", "Couldn't inject settings.", e);
-        }
+        mRootView.startReactApplication(appInstanceManager, mMainComponentName);
+        appInstanceManager.onHostResume(reactContext.getCurrentActivity());
+      } catch (Exception e) {
+        Log.e("ExpoDevelopmentClient", "Couldn't inject settings.", e);
+        mode = Mode.LAUNCHER;
       }
     });
   }
