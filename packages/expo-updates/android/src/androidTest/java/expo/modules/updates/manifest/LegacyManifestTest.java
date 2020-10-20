@@ -12,6 +12,11 @@ import androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner;
 @RunWith(AndroidJUnit4ClassRunner.class)
 public class LegacyManifestTest {
   @Test
+  public void testFailure() {
+    Assert.assertEquals(2+2, 3);
+  }
+
+  @Test
   public void testGetAssetsUrlBase_assetUrlOverride_absoluteUrl() throws JSONException {
     String assetUrlBase = "https://xxx.dev/~assets";
 
