@@ -27,6 +27,7 @@
 - Removed the large icon from managed workflow. ([#10492](https://github.com/expo/expo/pull/10492) by [@lukmccall](https://github.com/lukmccall))
 - Fixed crash happening due to non-existent `ExpoNotificationsService` being declared in `AndroidManifest.xml`. ([#10638](https://github.com/expo/expo/pull/10638) by [@sjchmiela](https://github.com/sjchmiela))
 - Fixed notifications _not_ playing any sound when `shouldShowAlert: false` but `shouldPlaySound: true` in `setNotificationHandler`. ([#10699](https://github.com/expo/expo/pull/10699) by [@cruzach](https://github.com/cruzach))
+- Fixed having to define `CATEGORY_DEFAULT` on an `Activity` that is expected to receive `expo.modules.notifications.OPEN_APP_ACTION` intent when handling notification response. ([#10755](https://github.com/expo/expo/pull/10755) by [@sjchmiela](https://github.com/sjchmiela))
 
 ## 0.7.1 — 2020-08-26
 
